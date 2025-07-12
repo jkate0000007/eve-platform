@@ -277,7 +277,7 @@ export default async function CreatorProfilePage({
             ) : (
               <Card>
                 <CardContent className="py-8 text-center">
-                  <p className="text-muted-foreground">This creator hasn't posted any preview content yet.</p>
+                  <p className="text-muted-foreground">This creator hasn't posted any preview content(s) yet.</p>
                 </CardContent>
               </Card>
             )}
