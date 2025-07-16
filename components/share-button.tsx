@@ -1,9 +1,11 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ArrowRight } from "lucide-react"
+import { Send as LucideSend } from "lucide-react"
+import { PaperAirplaneIcon as SendSolid } from "@heroicons/react/24/solid"
 import { useToast } from "@/hooks/use-toast"
 import { useState } from "react"
+import { Send } from "lucide-react";
 
 interface ShareButtonProps {
   url: string
@@ -39,16 +41,18 @@ export function ShareButton({ url, variant = "default", label }: ShareButtonProp
 
   if (variant === "shorts") {
     return (
-      <Button
-        type="button"
-        size="icon"
-        className={`rounded-full shadow-md transition-colors flex flex-col items-center justify-center w-12 h-12 bg-white text-gray-900 hover:bg-blue-100`}
-        style={{ border: "none" }}
-        onClick={handleShare}
-        aria-label="Share"
-      >
-        <ArrowRight className="h-6 w-6" />
-      </Button>
+      <div className="flex flex-col items-center">
+        <button
+          type="button"
+          className="bg-transparent border-none p-0 m-0 focus:outline-none"
+          onClick={handleShare}
+          aria-label="Share"
+          title="Share"
+        >
+          <SendSolid className={`h-8 w-8 transition-colors ${copied ? "text-blue-500" : "text-white"}`} />
+        </button>
+        {copied && <span className="text-xs font-semibold mt-1 text-white drop-shadow">Copied!</span>}
+      </div>
     )
   }
   if (variant === "profile") {
@@ -60,7 +64,7 @@ export function ShareButton({ url, variant = "default", label }: ShareButtonProp
         onClick={handleShare}
         aria-label="Share Profile"
       >
-        <ArrowRight className="h-4 w-4 mr-2" />
+        <Send className="h-4 w-4 mr-2" />
         {label || "Share Profile"}
       </Button>
     )
@@ -73,7 +77,7 @@ export function ShareButton({ url, variant = "default", label }: ShareButtonProp
       onClick={handleShare}
       aria-label="Share"
     >
-      <ArrowRight className="h-4 w-4" />
+      <Send className="h-4 w-4" />
       {label || "Share"}
     </Button>
   )

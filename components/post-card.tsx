@@ -11,6 +11,7 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import type { Database } from "@/lib/database.types"
+import { formatTimeAgo } from "@/lib/utils"
 
 type Post = Database["public"]["Tables"]["posts"]["Row"] & {
   creator?: Database["public"]["Tables"]["profiles"]["Row"]
@@ -94,7 +95,7 @@ export function PostCard({ post, isSubscribed, currentUserId }: PostCardProps) {
           </Avatar>
           <div className="flex-1">
             <p className="font-medium text-sm">{post.creator?.username || "Unknown Creator"}</p>
-            <p className="text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</p>
+            <p className="text-xs text-muted-foreground">{formatTimeAgo(post.created_at)}</p>
           </div>
         </div>
         <CardTitle>{post.title}</CardTitle>

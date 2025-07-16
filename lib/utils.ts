@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { createClient } from "@/lib/supabase/client"
+import { formatDistanceToNow } from "date-fns"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -48,4 +49,8 @@ export function getPublicStorageUrl(bucket: string, path: string | null): string
   }
 
   return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`
+}
+
+export function formatTimeAgo(date: string | number | Date) {
+  return formatDistanceToNow(new Date(date), { addSuffix: true, includeSeconds: true })
 }

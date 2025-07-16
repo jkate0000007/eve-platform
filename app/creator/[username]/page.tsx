@@ -10,6 +10,7 @@ import { FollowButton } from "@/components/follow-button"
 import { getFollowerCount, getFollowingCount, isFollowing } from "@/app/actions/follow-actions"
 import { ShareButton } from "@/components/share-button"
 
+
 export default async function CreatorProfilePage({
   params,
 }: {

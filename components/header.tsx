@@ -163,11 +163,11 @@ export default function Header() {
           </Link>
           {user && (
             <Link
-              href="/dashboard"
-              className={`text-lg font-bold ${dancingScript.className} ${isActive("/dashboard") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
+              href="/profile"
+              className={`text-lg font-bold ${dancingScript.className} ${isActive("/profile") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
               style={{ fontWeight: 700 }}
             >
-              Dashboard
+              Profile
             </Link>
           )}
         </nav>

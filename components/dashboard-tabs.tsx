@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { PostCard } from "./post-card"
 import { getCreatorAppleGifts, redeemApples } from "@/app/actions/apple-gift-actions"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userId: string }) {
   const { toast } = useToast()
@@ -257,7 +258,7 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
 
       {/* Content/Feed Tab */}
       <TabsContent value={isCreator ? "content" : "feed"} className="max-w-4xl mx-auto">
-        {isCreator && (
+        {/* {isCreator && (
           
           <Card className="mb-6">
             <CardHeader>
@@ -348,11 +349,33 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
               </form>
             </CardContent>
           </Card>
-        )}
+        )} */}
 
         <div className="grid gap-6">
           {loading ? (
-            <p>Loading posts...</p>
+            // Show skeletons while loading
+            Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <div className="flex items-center gap-3 mb-2">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="flex-1">
+                      <Skeleton className="h-4 w-32 mb-1" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-5 w-40 mb-2" />
+                  <Skeleton className="h-4 w-3/4" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="rounded-md w-full h-56 mb-4" />
+                  <div className="flex space-x-2">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))
           ) : posts.length === 0 ? (
             <Card>
               <CardContent className="pt-6">

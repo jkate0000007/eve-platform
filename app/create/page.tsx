@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,15 +9,87 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { UploadCloud } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
+import type { User } from "@supabase/supabase-js"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function CreatePage() {
   const { toast } = useToast()
+  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [postTitle, setPostTitle] = useState("")
   const [postContent, setPostContent] = useState("")
   const [postFile, setPostFile] = useState<File | null>(null)
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null)
   const [isPreview, setIsPreview] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const supabase = createClient()
+
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        setLoading(true)
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        setUser(user)
+
+        if (user) {
+          const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+          setProfile(data)
+          
+          // Check if user is a creator, if not redirect to dashboard
+          if (data?.account_type !== "creator") {
+            toast({ 
+              title: "Access Denied", 
+              description: "Only creators can access the create page.", 
+              variant: "destructive" 
+            })
+            router.push("/dashboard")
+            return
+          }
+        } else {
+          // No user logged in, redirect to login
+          router.push("/login")
+          return
+        }
+      } catch (error) {
+        console.error("Error loading user:", error)
+        router.push("/login")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    getUser()
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user ?? null)
+
+      if (session?.user) {
+        const { data } = await supabase.from("profiles").select("*").eq("id", session.user.id).single()
+        setProfile(data)
+        
+        if (data?.account_type !== "creator") {
+          toast({ 
+            title: "Access Denied", 
+            description: "Only creators can access the create page.", 
+            variant: "destructive" 
+          })
+          router.push("/dashboard")
+        }
+      } else {
+        setProfile(null)
+        router.push("/login")
+      }
+    })
+
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
+  }, [supabase, router, toast])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -36,15 +109,71 @@ export default function CreatePage() {
       return
     }
     setSubmitting(true)
-    setTimeout(() => {
-      toast({ title: "Success", description: "(Demo) Your post would be created!" })
+    try {
+      // 1. Upload file to Supabase Storage
+      const fileExt = postFile.name.split(".").pop()
+      const fileName = `${user?.id}/${Date.now()}.${fileExt}`
+      const { error: uploadError } = await supabase.storage.from("content").upload(fileName, postFile)
+      if (uploadError) throw uploadError
+
+      // 2. Insert post into posts table
+      const { error: postError } = await supabase.from("posts").insert({
+        title: postTitle,
+        content: postContent,
+        creator_id: user?.id,
+        file_url: fileName,
+        is_preview: isPreview,
+      })
+      if (postError) throw postError
+
+      toast({ title: "Success", description: "Your post has been created!" })
       setPostTitle("")
       setPostContent("")
       setPostFile(null)
       setMediaPreviewUrl(null)
       setIsPreview(false)
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to create post", variant: "destructive" })
+    } finally {
       setSubmitting(false)
-    }, 1000)
+    }
+  }
+
+  // Show loading state while checking user permissions
+  if (loading) {
+    return (
+      <div className="container py-10 max-w-xl mx-auto">
+        <Skeleton className="h-8 w-48 mb-6" />
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32 mb-2" />
+            <Skeleton className="h-4 w-full" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Don't render the form if user is not a creator (they will be redirected)
+  if (!user || profile?.account_type !== "creator") {
+    return null
   }
 
   return (

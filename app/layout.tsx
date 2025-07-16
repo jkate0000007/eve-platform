@@ -4,7 +4,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
-import Header from "@/components/header"
+import ConditionalHeader from "@/components/conditional-header"
 import BottomNav from "@/components/bottom-nav"
 import { SupabaseProvider } from "@/components/supabase-provider"
 import { Dancing_Script } from "next/font/google"
@@ -28,7 +28,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans antialiased">
         <SupabaseProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <Header />
+            <ConditionalHeader />
             <main className="px-4 min-h-[calc(100vh-4rem)] pb-20 md:pb-0">{children}</main>
             <BottomNav />
             <Toaster />

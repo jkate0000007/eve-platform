@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Heart } from "lucide-react"
+import { Heart as LucideHeart } from "lucide-react"
+import { HeartIcon as HeartSolid } from "@heroicons/react/24/solid"
 import { toggleLike, getLikeCount, checkIfUserLiked } from "@/app/actions/like-actions"
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
@@ -72,19 +73,20 @@ export function LikeButton({ postId, currentUserId, variant = "default" }: LikeB
 
   if (variant === "shorts") {
     return (
-      <Button
-        type="button"
-        size="icon"
-        className={`rounded-full shadow-md transition-colors flex flex-col items-center justify-center w-12 h-12
-          ${liked ? "bg-red-600 text-white" : "bg-white text-gray-900 hover:bg-red-100"}
-        `}
-        style={{ border: "none" }}
-        onClick={handleLike}
-        disabled={isLoading}
-      >
-        <Heart className={`h-6 w-6 ${liked ? "fill-current" : ""}`} />
-        <span className="text-xs font-semibold mt-1">{likeCount > 0 ? likeCount : ""}</span>
-      </Button>
+      <div className="flex flex-col items-center">
+        <button
+          type="button"
+          className="bg-transparent border-none p-0 m-0 focus:outline-none"
+          
+          onClick={handleLike}
+          disabled={isLoading}
+          title={liked ? 'Unlike' : 'Like'}
+        >
+          <HeartSolid className={`h-8 w-8 transition-colors ${liked ? "text-pink-700" : "text-white"}`} />
+        </button>
+        
+        <span className="text-sm font-semibold mt-1 text-white drop-shadow" >{likeCount > 0 ? likeCount : ""}</span>
+      </div>
     )
   }
   return (
@@ -95,7 +97,7 @@ export function LikeButton({ postId, currentUserId, variant = "default" }: LikeB
       onClick={handleLike}
       disabled={isLoading}
     >
-      <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
+      <LucideHeart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
       <span>{likeCount > 0 ? likeCount : ""}</span>
     </Button>
   )

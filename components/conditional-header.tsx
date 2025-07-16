@@ -1,13 +1,13 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import Header from "./header"
+import Header from "@/components/header"
 
-export function ConditionalHeader() {
+export default function ConditionalHeader() {
   const pathname = usePathname()
   
-  // Hide header on home page for full-screen TikTok experience
-  if (pathname === "/") {
+  // Hide header on shorts page
+  if (pathname === "/shorts") {
     return null
   }
   

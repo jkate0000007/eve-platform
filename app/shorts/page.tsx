@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Play } from "lucide-react"
+import { Play, MessageCircle } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { AppleGiftButton } from "@/components/apple-gift-button"
 import { LikeButton } from "@/components/like-button"
 import { ShareButton } from "@/components/share-button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { formatTimeAgo } from "@/lib/utils"
 
 export default function ShortsPage() {
   const [posts, setPosts] = useState<any[]>([])
@@ -128,7 +130,34 @@ export default function ShortsPage() {
   }, [posts]);
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-black text-white">Loading...</div>
+    return (
+      <div className="bg-black min-h-screen w-full flex flex-col items-center justify-center">
+        <div className="w-full max-w-md mx-auto h-screen overflow-y-auto snap-y snap-mandatory scrollbar-none shorts-scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <section
+              key={i}
+              className="shorts-snap snap-start h-screen w-full flex flex-col relative bg-black"
+              style={{ scrollSnapAlign: 'start' }}
+            >
+              <Skeleton className="w-full h-full object-cover" />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-4 z-20">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <Skeleton className="h-12 w-12 rounded-full" />
+              </div>
+              <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-16 ml-2" />
+                </div>
+                <Skeleton className="h-4 w-3/4 mt-2" />
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -144,6 +173,9 @@ export default function ShortsPage() {
               className="shorts-snap snap-start h-screen w-full flex flex-col relative bg-black"
               style={{ scrollSnapAlign: 'start' }}
             >
+              {/* Black container box for better video placement */}
+              <div className="w-full h-full max-w-md mx-auto bg-black relative overflow-hidden">
+                
               {post.mediaUrl ? (
                 <video
                   ref={el => { videoRefs.current[idx] = el || null; }}
@@ -152,7 +184,7 @@ export default function ShortsPage() {
                   controls
                   playsInline
                   preload="auto"
-                  style={{ background: '#000' }}
+                  style={{ background: '#000', objectFit: 'cover' }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-muted">
@@ -161,14 +193,26 @@ export default function ShortsPage() {
               )}
 
               {/* TikTok-style vertical action buttons - OUTSIDE overlay, relative to section */}
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-4 z-20">
-                <LikeButton postId={post.id} currentUserId={userId || undefined} />
+              <div className="absolute right-4 top-[400px] -translate-y-1/2 flex flex-col items-center gap-8 z-20">
+                <LikeButton postId={post.id} currentUserId={userId || undefined} variant="shorts" />
                 <AppleGiftButton
                   postId={post.id}
                   creatorId={post.creator_id}
                   creatorUsername={post.creator?.username || "Creator"}
                   currentUserId={userId || undefined}
+                  variant="shorts"
+                  appleCount={post.apple_count}
                 />
+                <div className="flex flex-col items-center">
+                  <button
+                    type="button"
+                    className="bg-transparent border-none p-0 m-0 focus:outline-none"
+                    title="Comment"
+                  >
+                    <MessageCircle className="h-8 w-8 transition-colors fill-current text-white" />
+                  </button>
+                  <span className="text-sm font-semibold mt-1 text-white drop-shadow">0</span>
+                </div>
                 <ShareButton
                   url={`${typeof window !== "undefined" ? window.location.origin : ""}/post/${post.id}`}
                   variant="shorts"
@@ -184,6 +228,7 @@ export default function ShortsPage() {
                         <AvatarImage
                           src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${post.creator.avatar_url}`}
                           alt={post.creator?.username}
+                          className="object-cover"
                         />
                       ) : null}
                       <AvatarFallback className="text-sm">
@@ -194,12 +239,14 @@ export default function ShortsPage() {
                       @{post.creator?.username}
                     </span>
                   </Link>
-                  <span className="text-xs text-muted-foreground ml-2">{new Date(post.created_at).toLocaleDateString()}</span>
+                  <span className="text-xs text-muted-foreground ml-2">{formatTimeAgo(post.created_at)}</span>
                 </div>
                 {post.caption && (
                   <p className="text-white text-sm mt-2 line-clamp-3 max-w-[70vw] md:max-w-[60ch]">{post.caption}</p>
                 )}
               </div>
+              </div>
+              <div className="w-full h-16 bg-black"></div>
             </section>
           ))}
         </div>

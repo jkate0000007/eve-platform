@@ -1,43 +1,9 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Play, Heart, MessageCircle, Share2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ContentCard } from "@/components/content-card"
+import { ArrowRight, Heart, MessageCircle, Share2 } from "lucide-react"
+import { ContentFeed } from "@/components/content-feed"
 
-export default async function Home() {
-  const supabase = createClient()
-
-  // Fetch featured preview posts with creator info and signed URLs
-  const { data: previewPosts } = await supabase
-    .from("posts")
-    .select("*, creator:profiles!creator_id(*)")
-    .eq("is_preview", true)
-    .not("file_url", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(12)
-
-  // Get signed URLs for media
-  const postsWithMedia = await Promise.all(
-    (previewPosts || []).map(async (post) => {
-      let mediaUrl = null
-      if (post.file_url) {
-        try {
-          const { data } = await supabase.storage.from("content").createSignedUrl(post.file_url, 3600)
-          mediaUrl = data?.signedUrl
-        } catch (error) {
-          console.error("Error getting signed URL:", error)
-        }
-      }
-
-      return {
-        ...post,
-        mediaUrl,
-      }
-    })
-  )
-
+export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section - Compact */}
@@ -76,26 +42,7 @@ export default async function Home() {
             </Button>
           </div>
           
-          {postsWithMedia && postsWithMedia.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {postsWithMedia.map((post) => (
-                <ContentCard key={post.id} post={post} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                <Play className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium mb-2">No content available yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Be the first to create amazing content on Eve!
-              </p>
-              <Button asChild>
-                <Link href="/signup">Become a Creator</Link>
-              </Button>
-            </div>
-          )}
+          <ContentFeed />
         </div>
       </section>
 

@@ -86,6 +86,7 @@ export function ContentCard({ post }: ContentCardProps) {
                   <AvatarImage
                     src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${post.creator.avatar_url}`}
                     alt={post.creator.username}
+                    className="object-cover"
                   />
                 ) : null}
                 <AvatarFallback className="text-xs">
