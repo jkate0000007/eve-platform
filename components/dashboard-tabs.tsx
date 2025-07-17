@@ -254,6 +254,7 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
         </TabsTrigger>
         {isCreator && <TabsTrigger value="apples">Apple Gifts</TabsTrigger>}
         <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <TabsTrigger value="likes">Likes</TabsTrigger>
       </TabsList>
 
       {/* Content/Feed Tab */}
