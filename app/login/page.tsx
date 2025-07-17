@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
-  const redirectTo = searchParams.get("redirect") || "/dashboard"
+  const redirectTo = searchParams.get("redirect") || "/shorts"
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
