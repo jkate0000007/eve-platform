@@ -246,7 +246,7 @@ export default function ShortsPage() {
                 )}
               </div>
               </div>
-              <div className="w-full h-20 bg-black"></div>
+              <div className="w-full h-24 bg-black"></div>
             </section>
           ))}
         </div>
