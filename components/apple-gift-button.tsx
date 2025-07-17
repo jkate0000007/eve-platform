@@ -51,7 +51,7 @@ export function AppleGiftButton({
       const { count } = await supabase
         .from("followers")
         .select("*", { count: "exact", head: true })
-        .eq("creator_id", creatorId)
+        .eq("followed_id", creatorId)
       const countValue = count ?? 0
       setFollowerCount(countValue)
       setIsEligible(countValue >= 100)

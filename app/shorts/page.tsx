@@ -220,7 +220,7 @@ export default function ShortsPage() {
               </div>
 
               {/* Overlay: creator info, caption */}
-              <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent flex flex-col gap-3">
+              <div className="absolute bottom-6 left-0 w-full p-4  flex flex-col gap-3">
                 <div className="flex items-center gap-3">
                   <Link href={`/creator/${post.creator?.username || ''}`} className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
@@ -246,7 +246,7 @@ export default function ShortsPage() {
                 )}
               </div>
               </div>
-              <div className="w-full h-16 bg-black"></div>
+              <div className="w-full h-20 bg-black"></div>
             </section>
           ))}
         </div>
