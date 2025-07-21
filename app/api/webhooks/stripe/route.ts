@@ -2,10 +2,11 @@ import { headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { stripe } from "@/lib/stripe"
 import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
-  const signature = headers().get("stripe-signature")
+  const signature = (await headers()).get("stripe-signature")
 
   if (!signature) {
     return NextResponse.json({ error: "No signature" }, { status: 400 })
@@ -20,6 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
   }
 
+  // Server client with admin privileges
   const supabase = createClient()
 
   try {
@@ -30,7 +32,7 @@ export async function POST(req: NextRequest) {
 
         if (metadata?.type === "apple_gift") {
           // Handle apple gift payment
-          await supabase.from("apple_gifts").insert({
+          const { error: giftError } = await supabase.from("apple_gifts").insert({
             sender_id: metadata.sender_id,
             creator_id: metadata.creator_id,
             post_id: metadata.post_id,
@@ -40,16 +42,26 @@ export async function POST(req: NextRequest) {
             currency: "usd",
             status: "completed",
           })
+
+          if (giftError) {
+            console.error("Error inserting apple gift:", giftError)
+            throw giftError
+          }
         } else if (metadata?.creator_id && metadata?.subscriber_id) {
           // Handle subscription payment
-          await supabase.from("subscriptions").insert({
+          const { error: subError } = await supabase.from("subscriptions").insert({
             subscriber_id: metadata.subscriber_id,
             creator_id: metadata.creator_id,
             status: "active",
           })
 
+          if (subError) {
+            console.error("Error inserting subscription:", subError)
+            throw subError
+          }
+
           // Create transaction record
-          await supabase.from("transactions").insert({
+          const { error: txError } = await supabase.from("transactions").insert({
             subscriber_id: metadata.subscriber_id,
             creator_id: metadata.creator_id,
             amount: session.amount_total! / 100, // Convert from cents
@@ -57,6 +69,11 @@ export async function POST(req: NextRequest) {
             status: "completed",
             payment_method: "stripe",
           })
+
+          if (txError) {
+            console.error("Error inserting transaction:", txError)
+            throw txError
+          }
         }
         break
 
@@ -72,7 +89,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ received: true })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Webhook handler error:", error)
     return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 })
   }

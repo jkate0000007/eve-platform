@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Heart as LucideHeart } from "lucide-react"
 import { HeartIcon as HeartSolid } from "@heroicons/react/24/solid"
@@ -18,6 +18,8 @@ export function LikeButton({ postId, currentUserId, variant = "default" }: LikeB
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
+  const [animating, setAnimating] = useState(false)
+  const likeTimeout = useRef<NodeJS.Timeout | null>(null)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -45,22 +47,30 @@ export function LikeButton({ postId, currentUserId, variant = "default" }: LikeB
 
   const handleLike = async () => {
     if (!currentUserId) {
-      // Redirect to login instead of showing error
       router.push("/login?redirect=" + encodeURIComponent(window.location.pathname))
       return
     }
-
+    // Optimistic UI
+    const prevLiked = liked
+    const prevCount = likeCount
+    setLiked(!liked)
+    setLikeCount((c) => (!liked ? c + 1 : Math.max(0, c - 1)))
+    setAnimating(true)
+    if (likeTimeout.current) clearTimeout(likeTimeout.current)
+    likeTimeout.current = setTimeout(() => setAnimating(false), 400)
     setIsLoading(true)
     try {
       const result = await toggleLike(postId)
       if (result.success) {
         setLiked(result.liked ?? false)
-        // Update like count
         setLikeCount((prev) => ((result.liked ?? false) ? prev + 1 : Math.max(0, prev - 1)))
       } else {
         throw new Error(result.error)
       }
     } catch (error: any) {
+      // Revert UI
+      setLiked(prevLiked)
+      setLikeCount(prevCount)
       toast({
         title: "Error",
         description: error.message || "Failed to like post",
@@ -77,12 +87,14 @@ export function LikeButton({ postId, currentUserId, variant = "default" }: LikeB
         <button
           type="button"
           className="bg-transparent border-none p-0 m-0 focus:outline-none"
-          
           onClick={handleLike}
           disabled={isLoading}
           title={liked ? 'Unlike' : 'Like'}
         >
-          <HeartSolid className={`h-8 w-8 transition-colors ${liked ? "text-pink-700" : "text-white"}`} />
+          <HeartSolid
+            className={`h-8 w-8 transition-colors ${liked ? "text-pink-700" : "text-white"} ${animating ? "scale-125 animate-pulse" : ""}`}
+            style={{ transition: 'transform 0.2s' }}
+          />
         </button>
         
         <span className="text-sm font-semibold mt-1 text-white drop-shadow" >{likeCount > 0 ? likeCount : ""}</span>

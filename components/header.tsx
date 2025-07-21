@@ -20,7 +20,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Dancing_Script } from "next/font/google"
 const dancingScript = Dancing_Script({ subsets: ["latin"], weight: ["700"] })
 
-export default function Header() {
+export default function Header({ brandFontClass }: { brandFontClass?: string }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -91,21 +91,21 @@ export default function Header() {
               <nav className="flex flex-col gap-4 mt-8">
                 <Link
                   href="/"
-                  className={`text-lg font-bold ${dancingScript.className} ${isActive("/") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
+                  className={`text-lg font-bold ${brandFontClass || ""} ${isActive("/") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
                   style={{ fontWeight: 700 }}
                 >
                   Home
                 </Link>
                 <Link
                   href="/explore"
-                  className={`text-lg font-bold ${dancingScript.className} ${isActive("/explore") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
+                  className={`text-lg font-bold ${brandFontClass || ""} ${isActive("/explore") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
                   style={{ fontWeight: 700 }}
                 >
                   Explore
                 </Link>
                 <Link
                   href="/shorts"
-                  className={`text-lg font-bold ${dancingScript.className} ${isActive("/shorts") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary flex items-center gap-1`}
+                  className={`text-lg font-bold ${brandFontClass || ""} ${isActive("/shorts") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary flex items-center gap-1`}
                   style={{ fontWeight: 700 }}
                 >
                   
@@ -114,7 +114,7 @@ export default function Header() {
                 {user && (
                   <Link
                     href="/dashboard"
-                    className={`text-lg font-bold ${dancingScript.className} ${isActive("/dashboard") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
+                    className={`text-lg font-bold ${brandFontClass || ""} ${isActive("/dashboard") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
                     style={{ fontWeight: 700 }}
                   >
                     Dashboard
@@ -127,7 +127,7 @@ export default function Header() {
             <Image src="https://nbskmrqi6whncsmx.public.blob.vercel-storage.com/eve/logo/eve_logo-OY5VELPss6IsxAAlzbuo616ZlHMb4r.png"
            alt="logo" width={37} height={40} priority className="w-10 h-10" />
             <span
-              className={`text-3xl font-bold ${dancingScript.className}`}
+              className={`text-3xl font-bold ${brandFontClass || ""}`}
               style={{
                 textShadow: "0 1px 4px rgba(0,0,0,0.12), 0 1.5px 8px rgba(0,0,0,0.10)",
                 fontWeight: 700,
@@ -141,21 +141,21 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-6">
           <Link
             href="/"
-            className={`text-lg font-bold ${dancingScript.className} ${isActive("/") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
+            className={`text-lg font-bold ${brandFontClass || ""} ${isActive("/") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
             style={{ fontWeight: 700 }}
           >
             Home
           </Link>
           <Link
             href="/explore"
-            className={`text-lg font-bold ${dancingScript.className} ${isActive("/explore") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
+            className={`text-lg font-bold ${brandFontClass || ""} ${isActive("/explore") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
             style={{ fontWeight: 700 }}
           >
             Explore
           </Link>
           <Link
             href="/shorts"
-            className={`text-lg font-bold ${dancingScript.className} ${isActive("/shorts") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary flex items-center gap-1`}
+            className={`text-lg font-bold ${brandFontClass || ""} ${isActive("/shorts") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary flex items-center gap-1`}
             style={{ fontWeight: 700 }}
           >
            
@@ -164,7 +164,7 @@ export default function Header() {
           {user && (
             <Link
               href="/profile"
-              className={`text-lg font-bold ${dancingScript.className} ${isActive("/profile") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
+              className={`text-lg font-bold ${brandFontClass || ""} ${isActive("/profile") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
               style={{ fontWeight: 700 }}
             >
               Profile

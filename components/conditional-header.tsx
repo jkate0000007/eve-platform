@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation"
 import Header from "@/components/header"
 
-export default function ConditionalHeader() {
+export default function ConditionalHeader({ brandFontClass }: { brandFontClass?: string }) {
   const pathname = usePathname()
   
   // Hide header on shorts page
@@ -11,5 +11,5 @@ export default function ConditionalHeader() {
     return null
   }
   
-  return <Header />
+  return <Header brandFontClass={brandFontClass} />
 } 

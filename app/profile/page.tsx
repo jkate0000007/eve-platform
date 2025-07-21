@@ -2,7 +2,9 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { DashboardTabs } from "@/components/dashboard-tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CreatorQualificationPrompts } from "@/components/creator-qualification-prompts"
+import { CreatorQualificationPromptsWrapper } from "@/components/creator-qualification-prompts"
+import Link from "next/link"
+import { Pencil, UploadCloud } from "lucide-react"
 
 export default async function ProfilePage() {
   const supabase = createClient()
@@ -25,13 +27,40 @@ export default async function ProfilePage() {
     const { count } = await supabase
       .from("followers")
       .select("*", { count: "exact", head: true })
-      .eq("creator_id", session.user.id)
+      .eq("followed_id", session.user.id)
     followerCount = count ?? 0
   }
 
+  // Show warning if username is missing
+  const needsUsername = !profile?.username
+
   return (
     <div className="container py-10 max-w-4xl mx-auto">
-      <div className="flex flex-col items-center mb-8">
+      {needsUsername && (
+        <div className="mb-6 p-4 bg-yellow-100 text-yellow-800 rounded">
+          <p className="font-semibold">You need to set a username for your profile.</p>
+          {/* Optionally, add a link to profile/account-type page */}
+        </div>
+      )}
+      <div className="flex flex-col items-center mb-8 relative">
+        {/* Edit Profile Button */}
+        <Link
+          href="/profile/edit"
+          className="absolute right-0 top-0 bg-muted rounded-full p-2 hover:bg-accent transition"
+          title="Edit Profile"
+        >
+          <Pencil className="h-5 w-5 text-muted-foreground" />
+        </Link>
+        {/* Create Post Button (only for creators) */}
+        {isCreator && (
+          <Link
+            href="/create"
+            className="absolute right-12 top-0 bg-muted rounded-full p-2 hover:bg-accent transition"
+            title="Create Post"
+          >
+            <UploadCloud className="h-5 w-5 text-muted-foreground" />
+          </Link>
+        )}
         <Avatar className="h-20 w-20 mb-2">
           {profile?.avatar_url ? (
             <AvatarImage
@@ -56,12 +85,12 @@ export default async function ProfilePage() {
           )}
         </div>
       </div>
-      
+      {/* Debug info for development */}
+      {/* <pre className="text-xs bg-muted p-2 rounded mb-4">{JSON.stringify(profile, null, 2)}</pre> */}
       {/* Show qualification prompts for creators */}
       {isCreator && (
-        <CreatorQualificationPrompts followerCount={followerCount} />
+        <CreatorQualificationPromptsWrapper followerCount={followerCount} />
       )}
-      
       <DashboardTabs isCreator={isCreator} userId={session.user.id} />
     </div>
   )

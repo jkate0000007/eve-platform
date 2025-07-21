@@ -51,6 +51,54 @@ export function getPublicStorageUrl(bucket: string, path: string | null): string
   return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`
 }
 
+// Safe storage URL function with error handling and fallbacks
+export async function getSafeStorageUrl(bucket: string, path: string | null, isPublic = true): Promise<string> {
+  if (!path) return ""
+
+  try {
+    const supabase = createClient()
+    
+    // First check if the file exists
+    const { data: fileExists, error: checkError } = await supabase.storage
+      .from(bucket)
+      .list(path.split('/').slice(0, -1).join('/'), {
+        search: path.split('/').pop()
+      })
+
+    if (checkError || !fileExists || fileExists.length === 0) {
+      console.warn(`File not found in storage: ${bucket}/${path}`)
+      return ""
+    }
+
+    // If file exists, get the URL
+    if (isPublic) {
+      return getPublicStorageUrl(bucket, path)
+    } else {
+      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60)
+      if (error) {
+        console.error("Error creating signed URL:", error)
+        return ""
+      }
+      return data.signedUrl
+    }
+  } catch (error) {
+    console.error("Error in getSafeStorageUrl:", error)
+    return ""
+  }
+}
+
+// Get fallback image URL based on type
+export function getFallbackImage(type: 'avatar' | 'content' | 'placeholder' = 'placeholder'): string {
+  switch (type) {
+    case 'avatar':
+      return '/placeholder-user.jpg'
+    case 'content':
+      return '/placeholder.jpg'
+    default:
+      return '/placeholder.svg'
+  }
+}
+
 export function formatTimeAgo(date: string | number | Date) {
   return formatDistanceToNow(new Date(date), { addSuffix: true, includeSeconds: true })
 }

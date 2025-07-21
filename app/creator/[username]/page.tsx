@@ -1,5 +1,7 @@
-import { createClient } from "@/lib/supabase/server"
-import { notFound } from "next/navigation"
+"use client"
+import { useEffect, useState } from "react"
+import { useSearchParams, useParams, useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SubscribeButton } from "@/components/subscribe-button"
@@ -7,121 +9,219 @@ import { AppleGiftButton } from "@/components/apple-gift-button"
 import { PostCard } from "@/components/post-card"
 import { Apple } from "lucide-react"
 import { FollowButton } from "@/components/follow-button"
-import { getFollowerCount, getFollowingCount, isFollowing } from "@/app/actions/follow-actions"
 import { ShareButton } from "@/components/share-button"
+import { ProfileShareButton } from "@/components/profile-share-button"
+import { useToast } from "@/hooks/use-toast"
+import { Skeleton } from "@/components/ui/skeleton"
 
-
-export default async function CreatorProfilePage({
-  params,
-}: {
-  params: Promise<{ username: string }>
-}) {
-  const { username } = await params
+export default function CreatorProfilePage() {
+  const params = useParams()
+  const username = params.username as string
   const supabase = createClient()
+  const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
-  // Get creator profile
-  const { data: creator } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("username", username)
-    .eq("account_type", "creator")
-    .single()
+  const [creator, setCreator] = useState<any>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [posts, setPosts] = useState<any[]>([])
+  const [featuredMediaUrl, setFeaturedMediaUrl] = useState<string | null>(null)
+  const [subscriberCount, setSubscriberCount] = useState<number>(0)
+  const [postCount, setPostCount] = useState<number>(0)
+  const [recentGifts, setRecentGifts] = useState<any[]>([])
+  const [totalGifts, setTotalGifts] = useState<number>(0)
+  const [followerCount, setFollowerCount] = useState<number>(0)
+  const [followingCount, setFollowingCount] = useState<number>(0)
+  const [following, setFollowing] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  if (!creator) {
-    notFound()
-  }
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      // Get creator profile
+      const { data: creator } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("username", username)
+        .eq("account_type", "creator")
+        .single()
+      if (!creator) {
+        router.push("/not-found")
+        return
+      }
+      setCreator(creator)
 
-  // Get current user if logged in
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  const currentUserId = session?.user?.id
+      // Get current user if logged in
+      const { data: { session } } = await supabase.auth.getSession()
+      const currentUserId = session?.user?.id || null
+      setCurrentUserId(currentUserId)
 
-  // Check if user is subscribed to this creator
-  let isSubscribed = false
-  if (currentUserId) {
-    const { data: subscription } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("subscriber_id", currentUserId)
-      .eq("creator_id", creator.id)
-      .eq("status", "active")
-      .maybeSingle()
+      // Check if user is subscribed to this creator
+      let isSubscribed = false
+      if (currentUserId) {
+        const { data: subscription } = await supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("subscriber_id", currentUserId)
+          .eq("creator_id", creator.id)
+          .eq("status", "active")
+          .maybeSingle()
+        isSubscribed = !!subscription
+      }
+      setIsSubscribed(isSubscribed)
 
-    isSubscribed = !!subscription
-  }
+      // Get creator's public posts (preview posts)
+      const { data: posts } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("creator_id", creator.id)
+        .eq("is_preview", true)
+        .not("file_url", "is", null)
+        .order("created_at", { ascending: false })
+      setPosts(posts || [])
 
-  // Get creator's public posts (preview posts)
-  const { data: posts } = await supabase
-    .from("posts")
-    .select("*")
-    .eq("creator_id", creator.id)
-    .eq("is_preview", true)
-    .not("file_url", "is", null)
-    .order("created_at", { ascending: false })
+      // Get a featured post with media for the header
+      const featuredPost = (posts || []).find((post: any) => post.file_url) || null
+      if (featuredPost?.file_url) {
+        try {
+          const { data } = await supabase.storage.from("content").createSignedUrl(featuredPost.file_url, 3600)
+          setFeaturedMediaUrl(data?.signedUrl || null)
+        } catch (error) {
+          setFeaturedMediaUrl(null)
+        }
+      } else {
+        setFeaturedMediaUrl(null)
+      }
 
-  // Get a featured post with media for the header
-  const featuredPost = posts?.find((post) => post.file_url) || null
-  let featuredMediaUrl = null
+      // Get subscriber count
+      const { count: subscriberCount } = await supabase
+        .from("subscriptions")
+        .select("*", { count: "exact", head: true })
+        .eq("creator_id", creator.id)
+        .eq("status", "active")
+      setSubscriberCount(subscriberCount || 0)
 
-  if (featuredPost?.file_url) {
-    try {
-      const { data } = await supabase.storage.from("content").createSignedUrl(featuredPost.file_url, 3600)
-      featuredMediaUrl = data?.signedUrl
-    } catch (error) {
-      console.error("Error getting signed URL:", error)
+      // Get post count
+      const { count: postCount } = await supabase
+        .from("posts")
+        .select("*", { count: "exact", head: true })
+        .eq("creator_id", creator.id)
+        .not("file_url", "is", null)
+      setPostCount(postCount || 0)
+
+      // Get recent apple gifts
+      const { data: recentGifts } = await supabase
+        .from("apple_gifts")
+        .select("*, sender:profiles!sender_id(username, avatar_url)")
+        .eq("creator_id", creator.id)
+        .order("created_at", { ascending: false })
+        .limit(5)
+      setRecentGifts(recentGifts || [])
+
+      // Get total apple gifts count
+      const { count: totalGifts } = await supabase
+        .from("apple_gifts")
+        .select("*", { count: "exact", head: true })
+        .eq("creator_id", creator.id)
+      setTotalGifts(totalGifts || 0)
+
+      // Get follower/following counts
+      const { count: followerCount } = await supabase
+        .from("followers")
+        .select("*", { count: "exact", head: true })
+        .eq("followed_id", creator.id)
+      setFollowerCount(followerCount || 0)
+      const { count: followingCount } = await supabase
+        .from("followers")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", creator.id)
+      setFollowingCount(followingCount || 0)
+
+      // Check if current user is following this creator
+      let following = false
+      if (currentUserId) {
+        const { data: followData } = await supabase
+          .from("followers")
+          .select("id")
+          .eq("user_id", currentUserId)
+          .eq("followed_id", creator.id)
+          .maybeSingle()
+        following = !!followData
+      }
+      setFollowing(following)
+      setLoading(false)
     }
+    fetchData()
+    // eslint-disable-next-line
+  }, [username])
+
+  useEffect(() => {
+    if (searchParams.get("apple_gift") === "success") {
+      toast({
+        title: "Thank you!",
+        description: "Your apple gift was sent successfully.",
+      })
+    } else if (searchParams.get("apple_gift") === "canceled") {
+      toast({
+        title: "Payment canceled",
+        description: "Your apple gift payment was canceled.",
+        variant: "destructive",
+      })
+    }
+    // eslint-disable-next-line
+  }, [searchParams, toast])
+
+  if (loading) {
+    return (
+      <div className="container py-10 max-w-4xl mx-auto">
+        <div className="flex flex-col items-center mb-8">
+          <Skeleton className="h-24 w-24 mb-4 rounded-full" />
+          <Skeleton className="h-8 w-40 mb-2" />
+          <Skeleton className="h-4 w-24 mb-4" />
+          <Skeleton className="h-4 w-64 mb-6" />
+        </div>
+        <div className="grid grid-cols-3 gap-4 w-full mb-8">
+          <Skeleton className="h-12 w-full rounded-md" />
+          <Skeleton className="h-12 w-full rounded-md" />
+          <Skeleton className="h-12 w-full rounded-md" />
+        </div>
+        <div className="mb-6">
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-3/4 mb-2" />
+        </div>
+        <div className="space-y-6">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="flex items-center gap-3 mb-2">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-32 mb-1" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+                <Skeleton className="h-5 w-40 mb-2" />
+                <Skeleton className="h-4 w-3/4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="rounded-md w-full h-56 mb-4" />
+                <div className="flex space-x-2">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
   }
+  if (!creator) return null
 
-  // Get subscriber count
-  const { count: subscriberCount } = await supabase
-    .from("subscriptions")
-    .select("*", { count: "exact", head: true })
-    .eq("creator_id", creator.id)
-    .eq("status", "active")
-
-  // Get post count
-  const { count: postCount } = await supabase
-    .from("posts")
-    .select("*", { count: "exact", head: true })
-    .eq("creator_id", creator.id)
-    .not("file_url", "is", null)
-
-  // Get recent apple gifts
-  const { data: recentGifts } = await supabase
-    .from("apple_gifts")
-    .select("*, sender:profiles!sender_id(username, avatar_url)")
-    .eq("creator_id", creator.id)
-    .order("created_at", { ascending: false })
-    .limit(5)
-
-  // Get total apple gifts count
-  const { count: totalGifts } = await supabase
-    .from("apple_gifts")
-    .select("*", { count: "exact", head: true })
-    .eq("creator_id", creator.id)
-
-  // Get follower/following counts
-  const { count: followerCount } = await supabase
-    .from("followers")
-    .select("*", { count: "exact", head: true })
-    .eq("followed_id", creator.id)
-  const { count: followingCount } = await supabase
-    .from("followers")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", creator.id)
-
-  // Check if current user is following this creator
-  let following = false
-  if (currentUserId) {
-    const { data: followData } = await supabase
-      .from("followers")
-      .select("id")
-      .eq("user_id", currentUserId)
-      .eq("followed_id", creator.id)
-      .maybeSingle()
-    following = !!followData
-  }
+  // Find the featured post for rendering
+  const featuredPost = posts.find((post: any) => post.file_url) || null;
 
   return (
     <div>
@@ -192,11 +292,7 @@ export default async function CreatorProfilePage({
                         currentUserId={currentUserId}
                       />
                     )}
-                    <ShareButton
-                      url={`${process.env.NEXT_PUBLIC_BASE_URL || "https://" + (typeof window !== "undefined" ? window.location.host : "")}/creator/${creator.username}`}
-                      variant="profile"
-                      label="Share Profile"
-                    />
+                    <ProfileShareButton username={creator.username} />
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 w-full mt-6">

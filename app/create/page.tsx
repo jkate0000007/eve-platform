@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/skeleton"
 
 export default function CreatePage() {
   const { toast } = useToast()
@@ -108,6 +109,16 @@ export default function CreatePage() {
       toast({ title: "Error", description: "Media is required. Please upload an image or video.", variant: "destructive" })
       return
     }
+    // File validation
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm", "video/quicktime"]
+    if (!allowedTypes.includes(postFile.type)) {
+      toast({ title: "Error", description: "Unsupported file type. Please upload an image or video.", variant: "destructive" })
+      return
+    }
+    if (postFile.size > 50 * 1024 * 1024) { // 50MB limit
+      toast({ title: "Error", description: "File is too large. Max 50MB allowed.", variant: "destructive" })
+      return
+    }
     setSubmitting(true)
     try {
       // 1. Upload file to Supabase Storage
@@ -132,6 +143,8 @@ export default function CreatePage() {
       setPostFile(null)
       setMediaPreviewUrl(null)
       setIsPreview(false)
+      // Optionally redirect after success
+      setTimeout(() => router.push("/profile"), 1200)
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to create post", variant: "destructive" })
     } finally {
@@ -262,7 +275,7 @@ export default function CreatePage() {
               </Label>
             </div>
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Creating post..." : "Create Post"}
+              {submitting ? (<span className="flex items-center gap-2"><Spinner size={18} /> Creating post...</span>) : "Create Post"}
             </Button>
           </form>
         </CardContent>

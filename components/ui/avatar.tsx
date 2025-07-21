@@ -27,6 +27,16 @@ const AvatarImage = React.forwardRef<
   <AvatarPrimitive.Image
     ref={ref}
     className={cn("aspect-square h-full w-full", className)}
+    onError={(e) => {
+      // Hide the image on error and show fallback
+      const target = e.target as HTMLImageElement
+      target.style.display = "none"
+      // Trigger fallback to show
+      const fallback = target.nextElementSibling as HTMLElement
+      if (fallback) {
+        fallback.style.display = "flex"
+      }
+    }}
     {...props}
   />
 ))

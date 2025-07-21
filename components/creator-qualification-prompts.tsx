@@ -191,3 +191,41 @@ export function CreatorQualificationPrompts({ followerCount }: CreatorQualificat
     </Dialog>
   )
 } 
+
+export function CreatorQualificationPromptsWrapper({ followerCount }: { followerCount: number }) {
+  const [show, setShow] = useState(false)
+  const PROMPT_KEY = "creator-qualification-last-shown"
+  const COOLDOWN_DAYS = 7
+
+  useEffect(() => {
+    const lastShown = localStorage.getItem(PROMPT_KEY)
+    if (!lastShown) {
+      setShow(true)
+      return
+    }
+    const last = new Date(parseInt(lastShown, 10))
+    const now = new Date()
+    const diffDays = (now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24)
+    if (diffDays >= COOLDOWN_DAYS) {
+      setShow(true)
+    }
+  }, [])
+
+  const handleDismiss = () => {
+    localStorage.setItem(PROMPT_KEY, Date.now().toString())
+    setShow(false)
+  }
+
+  if (!show) return null
+
+  // Render the original prompts
+  return (
+    <div className="mb-6">
+      <div className="flex justify-end">
+        <button onClick={handleDismiss} className="text-xs text-muted-foreground hover:text-primary underline mb-1">Dismiss</button>
+      </div>
+      <CreatorQualificationPrompts followerCount={followerCount} />
+    </div>
+  )
+}
+

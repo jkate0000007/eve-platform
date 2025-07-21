@@ -17,9 +17,14 @@ import { PostCard } from "./post-card"
 import { getCreatorAppleGifts, redeemApples } from "@/app/actions/apple-gift-actions"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/skeleton"
+import { useGlobalLoading } from "@/components/global-loading-context"
+import { useRouter } from "next/navigation"
 
 export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userId: string }) {
   const { toast } = useToast()
+  const { setLoading } = useGlobalLoading()
+  const router = useRouter()
   const supabase = createClient()
   const [posts, setPosts] = useState<any[]>([])
   const [subscribers, setSubscribers] = useState<any[]>([])
@@ -29,7 +34,7 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
   const [totalAppleAmount, setTotalAppleAmount] = useState("0.00")
   const [redeemableApples, setRedeemableApples] = useState(0)
   const [appleRedemptionAmount, setAppleRedemptionAmount] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const [appleFeatureAvailable, setAppleFeatureAvailable] = useState(true)
   const [uploadingPost, setUploadingPost] = useState(false)
   const [redeemingApples, setRedeemingApples] = useState(false)
@@ -38,16 +43,19 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
   const [postFile, setPostFile] = useState<File | null>(null)
   const [isPreview, setIsPreview] = useState(false)
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null)
+  const [likedPosts, setLikedPosts] = useState<any[]>([])
+  const [loadingLikes, setLoadingLikes] = useState(false)
+  const [profileLoadingId, setProfileLoadingId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true)
+      setIsLoading(true)
       try {
         // Fetch posts if creator
         if (isCreator) {
           const { data: postsData } = await supabase
             .from("posts")
-            .select("*")
+            .select("*, creator:profiles!creator_id(*)")
             .eq("creator_id", userId)
             .not("file_url", "is", null)
             .order("created_at", { ascending: false })
@@ -100,10 +108,24 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
             setPosts(postsData || [])
           }
         }
+        // Fetch liked posts for both creators and fans
+        setLoadingLikes(true)
+        try {
+          const { data: likesData } = await supabase
+            .from("likes")
+            .select("post:posts(*, creator:profiles!creator_id(*))")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+          setLikedPosts((likesData || []).map((like: any) => like.post).filter(Boolean))
+        } catch (e) {
+          setLikedPosts([])
+        } finally {
+          setLoadingLikes(false)
+        }
       } catch (error) {
         console.error("Error fetching data:", error)
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     }
 
@@ -353,7 +375,7 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
         )} */}
 
         <div className="grid gap-6">
-          {loading ? (
+          {isLoading ? (
             // Show skeletons while loading
             Array.from({ length: 3 }).map((_, i) => (
               <Card key={i}>
@@ -401,7 +423,7 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {isLoading ? (
               <p>Loading...</p>
             ) : isCreator ? (
               subscribers.length === 0 ? (
@@ -456,8 +478,22 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
                         </p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={`/creator/${sub.creator.username}`}>View Profile</a>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild={false}
+                      disabled={profileLoadingId === sub.creator.id}
+                      onClick={async () => {
+                        setProfileLoadingId(sub.creator.id)
+                        setLoading(true)
+                        try {
+                          router.push(`/creator/${sub.creator.username}`)
+                        } finally {
+                          setTimeout(() => setProfileLoadingId(null), 2000) // fallback in case navigation is slow
+                        }
+                      }}
+                    >
+                      {profileLoadingId === sub.creator.id ? <Spinner size={18} /> : "View Profile"}
                     </Button>
                   </div>
                 ))}
@@ -655,6 +691,48 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
             </div>
           </CardContent>
         </Card>
+      </TabsContent>
+
+      {/* Likes Tab */}
+      <TabsContent value="likes" className="max-w-4xl mx-auto">
+        <div className="grid gap-6">
+          {loadingLikes ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <div className="flex items-center gap-3 mb-2">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="flex-1">
+                      <Skeleton className="h-4 w-32 mb-1" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-5 w-40 mb-2" />
+                  <Skeleton className="h-4 w-3/4" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="rounded-md w-full h-56 mb-4" />
+                  <div className="flex space-x-2">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : likedPosts.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-center text-muted-foreground">
+                  You haven't liked any posts yet.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            likedPosts.map((post) => (
+              <PostCard key={post.id} post={post} isSubscribed={true} currentUserId={userId} />
+            ))
+          )}
+        </div>
       </TabsContent>
     </Tabs>
   )

@@ -11,7 +11,9 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import type { Database } from "@/lib/database.types"
-import { formatTimeAgo } from "@/lib/utils"
+import { formatTimeAgo, getSafeStorageUrl, getFallbackImage } from "@/lib/utils"
+import { Edit, Trash2 } from "lucide-react"
+import { Spinner } from "@/components/ui/skeleton"
 
 type Post = Database["public"]["Tables"]["posts"]["Row"] & {
   creator?: Database["public"]["Tables"]["profiles"]["Row"]
@@ -28,15 +30,15 @@ export function PostCard({ post, isSubscribed, currentUserId }: PostCardProps) {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [creatorAvatarUrl, setCreatorAvatarUrl] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
-    // Set creator avatar URL
+    // Set creator avatar URL with error handling
     if (post.creator?.avatar_url) {
-      setCreatorAvatarUrl(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${post.creator.avatar_url}`,
-      )
+      const avatarUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${post.creator.avatar_url}`
+      setCreatorAvatarUrl(avatarUrl)
     }
 
     // If there's no file URL, don't do anything
@@ -48,29 +50,25 @@ export function PostCard({ post, isSubscribed, currentUserId }: PostCardProps) {
       const canAccessContent = post.is_preview || isSubscribed || isCreator
 
       if (canAccessContent) {
-        // For content bucket, we need to use signed URLs since it's not public
         try {
-          const { data, error } = await supabase.storage.from("content").createSignedUrl(post.file_url, 3600) // 1 hour expiry
-
-          if (data?.signedUrl) {
-            setMediaUrl(data.signedUrl)
-          } else if (error) {
-            console.error("Error getting signed URL:", error)
-            // Fallback to public URL in case the bucket is public
-            const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/content/${post.file_url}`
-            setMediaUrl(publicUrl)
+          // Use the safe storage URL function
+          const mediaUrl = await getSafeStorageUrl("content", post.file_url, false)
+          if (mediaUrl) {
+            setMediaUrl(mediaUrl)
+          } else {
+            console.warn("Media file not found:", post.file_url)
+            setMediaUrl("") // Set empty to show fallback
           }
         } catch (error) {
-          console.error("Error in signed URL generation:", error)
-          const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/content/${post.file_url}`
-          setMediaUrl(publicUrl)
+          console.error("Error getting media URL:", error)
+          setMediaUrl("") // Set empty to show fallback
         }
       }
       setIsLoading(false)
     }
 
     fetchMediaUrl()
-  }, [post.file_url, post.creator?.avatar_url, post.is_preview, isSubscribed, isCreator, supabase])
+  }, [post.file_url, post.is_preview, isSubscribed, isCreator, post.creator?.avatar_url, supabase])
 
   const handlePostClick = () => {
     if (post.creator?.username) {
@@ -80,6 +78,31 @@ export function PostCard({ post, isSubscribed, currentUserId }: PostCardProps) {
 
   const handleInteractionClick = (e: React.MouseEvent) => {
     e.stopPropagation() // Prevent post click when interacting with buttons
+  }
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    router.push(`/post/${post.id}/edit`)
+  }
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!window.confirm("Are you sure you want to delete this post? This cannot be undone.")) return
+    setDeleting(true)
+    try {
+      // Delete file from storage
+      if (post.file_url) {
+        await supabase.storage.from("content").remove([post.file_url])
+      }
+      // Delete post from DB
+      const { error } = await supabase.from("posts").delete().eq("id", post.id)
+      if (error) throw error
+      // Optionally, show a toast or refresh the page
+      router.refresh()
+    } catch (err: any) {
+      alert(err.message || "Failed to delete post")
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -114,12 +137,18 @@ export function PostCard({ post, isSubscribed, currentUserId }: PostCardProps) {
               </div>
             ) : mediaUrl && post.file_url.match(/\.(jpeg|jpg|gif|png)$/i) ? (
               <img
-                src={mediaUrl || "/placeholder.svg"}
+                src={mediaUrl}
                 alt="Post media"
                 className="rounded-md max-h-96 object-contain mx-auto w-full"
                 onError={(e) => {
                   console.error("Image failed to load:", post.file_url)
-                  ;(e.target as HTMLImageElement).style.display = "none"
+                  const target = e.target as HTMLImageElement
+                  target.style.display = "none"
+                  // Show fallback content
+                  const fallback = target.nextElementSibling as HTMLElement
+                  if (fallback) {
+                    fallback.style.display = "block"
+                  }
                 }}
               />
             ) : mediaUrl && post.file_url.match(/\.(mp4|webm|mov)$/i) ? (
@@ -129,7 +158,13 @@ export function PostCard({ post, isSubscribed, currentUserId }: PostCardProps) {
                 className="rounded-md max-h-96 w-full"
                 onError={(e) => {
                   console.error("Video failed to load:", post.file_url)
-                  ;(e.target as HTMLVideoElement).style.display = "none"
+                  const target = e.target as HTMLVideoElement
+                  target.style.display = "none"
+                  // Show fallback content
+                  const fallback = target.nextElementSibling as HTMLElement
+                  if (fallback) {
+                    fallback.style.display = "block"
+                  }
                 }}
               />
             ) : (
@@ -137,6 +172,19 @@ export function PostCard({ post, isSubscribed, currentUserId }: PostCardProps) {
                 <p>Unsupported media format or media not available</p>
               </div>
             )}
+            
+            {/* Fallback content for failed media */}
+            <div 
+              className="p-4 bg-muted rounded-md text-center hidden"
+              style={{ display: 'none' }}
+            >
+              <img 
+                src={getFallbackImage('content')} 
+                alt="Content unavailable" 
+                className="mx-auto max-h-48 rounded-md opacity-50"
+              />
+              <p className="mt-2 text-sm text-muted-foreground">Content unavailable</p>
+            </div>
           </div>
         )}
 
@@ -150,9 +198,21 @@ export function PostCard({ post, isSubscribed, currentUserId }: PostCardProps) {
                 creatorId={post.creator_id}
                 creatorUsername={post.creator?.username || "Creator"}
                 currentUserId={currentUserId}
+                variant="post"
               />
             )}
           </div>
+          {/* Edit/Delete for creator */}
+          {isCreator && (
+            <div className="flex space-x-2 ml-auto">
+              <Button size="icon" variant="ghost" onClick={handleEdit} title="Edit Post">
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={handleDelete} title="Delete Post" disabled={deleting}>
+                {deleting ? <Spinner size={16} /> : <Trash2 className="h-4 w-4 text-destructive" />}
+              </Button>
+            </div>
+          )}
 
           {!isSubscribed && !post.is_preview && !isCreator && (
             <Button variant="outline" size="sm" className="ml-auto">

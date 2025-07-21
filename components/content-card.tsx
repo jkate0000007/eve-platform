@@ -2,11 +2,14 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Play } from "lucide-react"
+import { useGlobalLoading } from "@/components/global-loading-context"
+import { getSafeStorageUrl, getFallbackImage } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 interface ContentCardProps {
   post: any
@@ -16,7 +19,34 @@ export function ContentCard({ post }: ContentCardProps) {
   const isVideo = post.file_url?.match(/\.(mp4|webm|mov)$/i)
   const isImage = post.file_url?.match(/\.(jpeg|jpg|gif|png)$/i)
   const router = useRouter()
+  const { setLoading } = useGlobalLoading()
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [mediaUrl, setMediaUrl] = useState<string | null>(post.mediaUrl || null)
+  const [mediaError, setMediaError] = useState(false)
+  const supabase = createClient()
+
+  // Fetch media URL if not provided
+  useEffect(() => {
+    const fetchMediaUrl = async () => {
+      if (!post.file_url || post.mediaUrl) return
+
+      try {
+        // Use the safe storage URL function
+        const url = await getSafeStorageUrl("content", post.file_url, false)
+        if (url) {
+          setMediaUrl(url)
+        } else {
+          console.warn("Media file not found:", post.file_url)
+          setMediaError(true)
+        }
+      } catch (error) {
+        console.error("Error getting media URL:", error)
+        setMediaError(true)
+      }
+    }
+
+    fetchMediaUrl()
+  }, [post.file_url, post.mediaUrl, supabase])
 
   // Pause video when component unmounts or when navigating
   useEffect(() => {
@@ -45,15 +75,24 @@ export function ContentCard({ post }: ContentCardProps) {
     <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-all" onClick={handleCardClick} tabIndex={0}>
       <CardContent className="p-0">
         <div className="aspect-[4/5] relative bg-muted overflow-hidden">
-          {isVideo ? (
+          {mediaError ? (
+            <div className="w-full h-full flex items-center justify-center bg-muted">
+              <img 
+                src={getFallbackImage('content')} 
+                alt="Content unavailable" 
+                className="max-h-32 opacity-50"
+              />
+            </div>
+          ) : isVideo && mediaUrl ? (
             <div className="relative w-full h-full">
               <video
                 ref={videoRef}
-                src={post.mediaUrl}
+                src={mediaUrl}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 muted
                 preload="metadata"
                 poster=""
+                onError={() => setMediaError(true)}
               />
               {/* Play button overlay for videos */}
               <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/5 transition-colors">
@@ -62,11 +101,12 @@ export function ContentCard({ post }: ContentCardProps) {
                 </div>
               </div>
             </div>
-          ) : isImage ? (
+          ) : isImage && mediaUrl ? (
             <img
-              src={post.mediaUrl}
+              src={mediaUrl}
               alt={post.caption || "Content"}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              onError={() => setMediaError(true)}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-muted">
@@ -118,19 +158,18 @@ export function ContentCard({ post }: ContentCardProps) {
           )}
           
           {/* View Profile Button */}
-          <Link 
-            href={`/creator/${post.creator?.username}`}
-            className="block w-full"
-            onClick={e => e.stopPropagation()}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full text-xs"
+            onClick={(e) => {
+              e.stopPropagation()
+              setLoading(true)
+              router.push(`/creator/${post.creator?.username}`)
+            }}
           >
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full text-xs"
-            >
-              View Profile
-            </Button>
-          </Link>
+            View Profile
+          </Button>
         </div>
       </CardContent>
     </Card>

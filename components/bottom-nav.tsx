@@ -18,12 +18,14 @@ import {
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
+import { Spinner } from "@/components/ui/skeleton"
 
 export default function BottomNav() {
   const pathname = usePathname()
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [navLoading, setNavLoading] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -63,6 +65,11 @@ export default function BottomNav() {
       authListener.subscription.unsubscribe()
     }
   }, [supabase])
+
+  useEffect(() => {
+    // Reset nav loading when route changes
+    setNavLoading(null)
+  }, [pathname])
 
   const baseNavItems = [
     {
@@ -130,8 +137,13 @@ export default function BottomNav() {
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-primary hover:bg-muted/50"
               )}
+              onClick={() => setNavLoading(item.href)}
             >
-              <Icon className="h-6 w-6 mb-1" />
+              {navLoading === item.href ? (
+                <Spinner size={24} className="mb-1" />
+              ) : (
+                <Icon className="h-6 w-6 mb-1" />
+              )}
               <span className="text-xs font-medium">{item.label}</span>
             </Link>
           )

@@ -24,7 +24,7 @@ interface AppleGiftButtonProps {
   creatorId: string
   creatorUsername: string
   currentUserId?: string
-  variant?: "default" | "profile" | "shorts"
+  variant?: "default" | "profile" | "shorts"| "post"
   appleCount?: number // for shorts, show count below icon
 }
 
@@ -189,6 +189,7 @@ export function AppleGiftButton({
         >
           {variant === "profile" && <span>Send Apple </span>}
           {variant === "default" && <span>Gift</span>}
+          {variant === "post" && <span><LucideApple className="h-5 w-5" /></span>}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

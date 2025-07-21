@@ -95,6 +95,21 @@ export default function ShortsPage() {
     const observers: IntersectionObserver[] = [];
     videoRefs.current.forEach((video, idx) => {
       if (!video) return;
+      let userPaused = false;
+      // Listen for manual pause
+      const onPause = () => {
+        if (video.currentTime > 0 && !video.ended) {
+          userPaused = true;
+        }
+      };
+      const onPlay = () => {
+        userPaused = false;
+      };
+      video.addEventListener('pause', onPause);
+      video.addEventListener('play', onPlay);
+      // Store handlers for cleanup
+      (video as any)._onPauseHandler = onPause;
+      (video as any)._onPlayHandler = onPlay;
       const observer = new window.IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
@@ -106,8 +121,10 @@ export default function ShortsPage() {
                   v.currentTime = 0;
                 }
               });
-              // Play this video
-              video.play().catch(() => {});
+              // Play this video if not manually paused
+              if (!userPaused) {
+                video.play().catch(() => {});
+              }
             } else {
               // Pause and reset this video if not in view
               video.pause();
@@ -126,6 +143,11 @@ export default function ShortsPage() {
     }
     return () => {
       observers.forEach((observer) => observer.disconnect());
+      videoRefs.current.forEach((video) => {
+        if (!video) return;
+        if ((video as any)._onPauseHandler) video.removeEventListener('pause', (video as any)._onPauseHandler);
+        if ((video as any)._onPlayHandler) video.removeEventListener('play', (video as any)._onPlayHandler);
+      });
     };
   }, [posts]);
 
@@ -184,6 +206,7 @@ export default function ShortsPage() {
                   controls
                   playsInline
                   preload="auto"
+                  loop
                   style={{ background: '#000', objectFit: 'cover' }}
                 />
               ) : (
