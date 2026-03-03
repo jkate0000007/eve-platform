@@ -91,7 +91,7 @@ return {
     {/* Text */}
     <div className=" text-center md:text-left">
       <h1 className="text-3xl md:text-5xl font-bold tracking-tight">
-        Exclusive content from creators you love
+        Exclusive contenta from creators you love
       </h1>
 
       <p className="mt-4 text-muted-foreground max-w-xl">
