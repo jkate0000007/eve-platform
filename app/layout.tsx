@@ -14,12 +14,18 @@ import { GlobalLoadingProvider } from "@/components/global-loading-context"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { Sora } from "next/font/google"
 
+
+
+
 const inter = Inter({ subsets: ["latin"] })
 const dancingScript = Dancing_Script({ subsets: ["latin"], weight: ["700"] })
 const sora = Sora({ subsets: ["latin"], weight: ["600", "700"] })
 
 export const metadata: Metadata = {
   title: "Eve - Connect with Creators",
+  icons: {
+    icon: "/favicon.png",
+  },
   description: "Subscribe to your favorite content creators",
     generator: 'v0.dev'
 }

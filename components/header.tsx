@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { User } from "@supabase/supabase-js"
 import { Menu, PlayCircle } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -77,8 +78,8 @@ export default function Header({ brandFontClass }: { brandFontClass?: string }) 
   const isActive = (path: string) => pathname === path
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex px-4 h-16 items-center justify-between">
+    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex  lg:px-48 px-4 h-16 items-center justify-between">
         <div className="flex items-center gap-2">
           <Sheet>
             <SheetTrigger asChild className="md:hidden">
@@ -104,12 +105,12 @@ export default function Header({ brandFontClass }: { brandFontClass?: string }) 
                   Explore
                 </Link>
                 <Link
-                  href="/shorts"
+                  href="/leaderboard"
                   className={`text-lg font-bold ${brandFontClass || ""} ${isActive("/shorts") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary flex items-center gap-1`}
                   style={{ fontWeight: 700 }}
                 >
                   
-                  Shorts
+                  Leaderboard
                 </Link>
                 {user && (
                   <Link
@@ -125,20 +126,25 @@ export default function Header({ brandFontClass }: { brandFontClass?: string }) 
           </Sheet>
           <Link href="/" className="flex items-center space-x-2">
             <Image src="https://nbskmrqi6whncsmx.public.blob.vercel-storage.com/eve/logo/eve_logo-OY5VELPss6IsxAAlzbuo616ZlHMb4r.png"
-           alt="logo" width={37} height={40} priority className="w-10 h-10" />
-            <span
-              className={`text-3xl font-bold ${brandFontClass || ""}`}
+           alt="logo" width={24} height={24} priority className="w-6 h-6" />
+            {/* <span
+              className={`hidden md:block font-semibold ${brandFontClass || ""}`}
               style={{
-                textShadow: "0 1px 4px rgba(0,0,0,0.12), 0 1.5px 8px rgba(0,0,0,0.10)",
-                fontWeight: 700,
+                fontSize: "clamp(1.2rem, 4vw, 1.6rem)",
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
               }}
             >
-              Eve
-            </span>
+              E V E
+            </span> */}
+
+
+
           </Link>
         </div>
 
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-24">
+        
           <Link
             href="/"
             className={`text-lg font-bold ${brandFontClass || ""} ${isActive("/") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary`}
@@ -154,12 +160,12 @@ export default function Header({ brandFontClass }: { brandFontClass?: string }) 
             Explore
           </Link>
           <Link
-            href="/shorts"
+            href="/leaderboard"
             className={`text-lg font-bold ${brandFontClass || ""} ${isActive("/shorts") ? "text-primary" : "text-muted-foreground"} transition-colors hover:text-primary flex items-center gap-1`}
             style={{ fontWeight: 700 }}
           >
            
-            Shorts
+           Leaderboard
           </Link>
           {user && (
             <Link
@@ -169,23 +175,29 @@ export default function Header({ brandFontClass }: { brandFontClass?: string }) 
             >
               Profile
             </Link>
+
+            
+            
           )}
+
+
         </nav>
 
         <div className="flex items-center gap-4">
-          {!loading &&
-            (user ? (
+          {loading ? (
+            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+          ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      {profile?.avatar_url ? (
-                        <AvatarImage
-                          src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}`}
-                          alt={profile?.username || ""}
-                          className="object-cover "
-                        />
-                      ) : null}
+                      <AvatarImage
+                        src={profile?.avatar_url
+                          ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}`
+                          : `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.username || user.email?.split("@")[0] || "User")}&background=random&size=64`}
+                        alt={profile?.username || ""}
+                        className="object-cover"
+                      />
                       <AvatarFallback>
                         {profile?.username?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
                       </AvatarFallback>
@@ -213,7 +225,8 @@ export default function Header({ brandFontClass }: { brandFontClass?: string }) 
                   <DropdownMenuItem onClick={handleSignOut}>Log out</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : (
+            ) : null}
+          {!loading && !user && (
               <>
                 <Button variant="ghost" size="sm" asChild>
                   <Link href="/login">Log in</Link>
@@ -222,7 +235,7 @@ export default function Header({ brandFontClass }: { brandFontClass?: string }) 
                   <Link href="/signup">Sign up</Link>
                 </Button>
               </>
-            ))}
+            )}
         </div>
       </div>
     </header>

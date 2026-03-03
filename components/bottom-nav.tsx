@@ -85,11 +85,17 @@ export default function BottomNav() {
       solid: SearchSolid,
     },
     {
-      href: "/shorts",
-      label: "Shorts",
+      href: "/leaderboard",
+      label: "Leaderboard",
       outline: PlayOutline,
       solid: PlaySolid,
     },
+    // {
+    //   href: "/shorts",
+    //   label: "ShortsLea",
+    //   outline: PlayOutline,
+    //   solid: PlaySolid,
+    // },
   ]
 
   const createNavItem = {

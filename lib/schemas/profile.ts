@@ -3,8 +3,10 @@ import { z } from "zod"
 export const profileUpdateSchema = z.object({
   username: z
     .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(32, "Username must be at most 32 characters")
-    .regex(/^[a-zA-Z0-9_]+$/, "Only letters, numbers, and underscores allowed"),
+    .optional()
+    .refine(
+      (val) => !val || (val.length >= 3 && val.length <= 32 && /^[a-zA-Z0-9_]+$/.test(val)),
+      { message: "Username must be 3-32 characters, letters/numbers/underscores only" }
+    ),
   bio: z.string().max(160, "Bio must be at most 160 characters").optional(),
 }) 

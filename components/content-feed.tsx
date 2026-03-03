@@ -25,7 +25,7 @@ export function ContentFeed() {
           .eq("is_preview", true)
           .not("file_url", "is", null)
           .order("created_at", { ascending: false })
-          .limit(12)
+          .limit(4)
 
         // Get signed URLs for media
         const postsWithMedia = await Promise.all(

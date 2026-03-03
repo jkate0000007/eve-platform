@@ -5,6 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { CreatorQualificationPromptsWrapper } from "@/components/creator-qualification-prompts"
 import Link from "next/link"
 import { Pencil, UploadCloud } from "lucide-react"
+import RatingStars from "@/components/RatingStars"
+import { getAge } from "@/utils/get-age"
+import TraitsRating  from "@/components/TraitsRating"
 
 export default async function ProfilePage() {
   const supabase = createClient()
@@ -17,9 +20,29 @@ export default async function ProfilePage() {
     redirect("/login?redirect=/profile")
   }
 
+
+
   const { data: profile } = await supabase.from("profiles").select("*", { count: "exact" }).eq("id", session.user.id).single()
 
   const isCreator = profile?.account_type === "creator"
+
+  // Fetch creator ratings if the user is a creator
+let averageRating = 0
+let totalRatings = 0
+
+if (isCreator) {
+  const { data: ratingsData } = await supabase
+    .from("ratings")
+    .select("rating", { count: "exact" })
+    .eq("creator_id", profile.id)
+
+  if (ratingsData && ratingsData.length > 0) {
+    totalRatings = ratingsData.length
+    averageRating =
+      ratingsData.reduce((sum, r: any) => sum + r.rating, 0) / totalRatings
+  }
+}
+
 
   // Fetch follower count if creator
   let followerCount = 0
@@ -33,6 +56,8 @@ export default async function ProfilePage() {
 
   // Show warning if username is missing
   const needsUsername = !profile?.username
+
+  
 
   return (
     <div className="container py-10 max-w-4xl mx-auto">
@@ -88,6 +113,18 @@ export default async function ProfilePage() {
       {/* Debug info for development */}
       {/* <pre className="text-xs bg-muted p-2 rounded mb-4">{JSON.stringify(profile, null, 2)}</pre> */}
       {/* Show qualification prompts for creators */}
+      {isCreator && (
+  <div className="mt-2 flex flex-col items-center">
+    <p className="text-lg font-semibold">
+      ⭐ {averageRating.toFixed(1)} ({totalRatings} ratings)
+    </p>
+
+    {/* RatingStars component for logged-in users */}
+    {/* <RatingStars creatorId={profile.id} userId={session.user.id} /> */}
+    <TraitsRating creatorId={profile.id} userId={session.user.id} />
+  </div>
+)}
+
       {isCreator && (
         <CreatorQualificationPromptsWrapper followerCount={followerCount} />
       )}

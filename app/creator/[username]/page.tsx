@@ -13,6 +13,8 @@ import { ShareButton } from "@/components/share-button"
 import { ProfileShareButton } from "@/components/profile-share-button"
 import { useToast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
+import RatingStars from "@/components/RatingStars"
+import TraitsRating  from "@/components/TraitsRating"
 
 export default function CreatorProfilePage() {
   const params = useParams()
@@ -35,6 +37,8 @@ export default function CreatorProfilePage() {
   const [followingCount, setFollowingCount] = useState<number>(0)
   const [following, setFollowing] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [averageRating, setAverageRating] = useState<number>(0)
+  const [totalRatings, setTotalRatings] = useState<number>(0)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -150,6 +154,23 @@ export default function CreatorProfilePage() {
         following = !!followData
       }
       setFollowing(following)
+
+      // Fetch creator ratings
+      const { data: ratingsData } = await supabase
+        .from("ratings")
+        .select("rating", { count: "exact" })
+        .eq("creator_id", creator.id)
+
+      if (ratingsData && ratingsData.length > 0) {
+        const total = ratingsData.length
+        const average = ratingsData.reduce((sum, r: any) => sum + r.rating, 0) / total
+        setTotalRatings(total)
+        setAverageRating(average)
+      } else {
+        setTotalRatings(0)
+        setAverageRating(0)
+      }
+
       setLoading(false)
     }
     fetchData()
@@ -267,11 +288,25 @@ export default function CreatorProfilePage() {
                   <p className="text-muted-foreground mb-4">Creator</p>
                   <p className="mb-6">{creator.bio || "No bio available."}</p>
 
+                  {/* Rating Section */}
+                  <div className="mb-6 flex flex-col items-center">
+                    <p className="text-lg font-semibold">
+                      ⭐ {averageRating.toFixed(1)}/10 ({totalRatings} rating{totalRatings !== 1 ? "s" : ""})
+                    </p>
+                    {currentUserId && (
+                      <>
+                      <RatingStars creatorId={creator.id} userId={currentUserId as string} />
+                      <TraitsRating creatorId={creator.id} userId={currentUserId as string} />
+                      </>
+                    )}
+                  </div>
+                  
+
                   {/* Action Buttons */}
                   <div className="w-full space-y-3">
                     <FollowButton
                       creatorId={creator.id}
-                      currentUserId={currentUserId}
+                      currentUserId={currentUserId || undefined}
                       isFollowing={following}
                       followerCount={followerCount || 0}
                     />
@@ -280,7 +315,7 @@ export default function CreatorProfilePage() {
                         postId={featuredPost?.id || "general"}
                         creatorId={creator.id}
                         creatorUsername={creator.username}
-                        currentUserId={currentUserId}
+                        currentUserId={currentUserId || undefined}
                         variant="profile"
                       />
                     )}
@@ -289,7 +324,7 @@ export default function CreatorProfilePage() {
                         creatorId={creator.id}
                         isSubscribed={isSubscribed}
                         price={creator.subscription_price || 4.99}
-                        currentUserId={currentUserId}
+                        currentUserId={currentUserId || undefined}
                       />
                     )}
                     <ProfileShareButton username={creator.username} />
@@ -367,7 +402,7 @@ export default function CreatorProfilePage() {
                     key={post.id}
                     post={{ ...post, creator }}
                     isSubscribed={isSubscribed}
-                    currentUserId={currentUserId}
+                    currentUserId={currentUserId || undefined}
                   />
                 ))}
               </div>
@@ -387,7 +422,7 @@ export default function CreatorProfilePage() {
                   creatorId={creator.id}
                   isSubscribed={isSubscribed}
                   price={creator.subscription_price || 4.99}
-                  currentUserId={currentUserId}
+                  currentUserId={currentUserId || undefined}
                 />
               </div>
             )}

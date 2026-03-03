@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { CreatorCard } from "@/components/creator-card"
+import { ArrowRight, Heart, MessageCircle, Share2 } from "lucide-react"
 
 export default async function ExplorePage() {
   const supabase = createClient()
@@ -47,7 +48,31 @@ export default async function ExplorePage() {
   )
 
   return (
-    <div className="container py-10">
+    <div className="container mx-auto max-w-6xl py-10">
+      <section className="w-full py-8 md:py-12 bg-gradient-to-b from-background to-muted">
+        <div className="container px-4 md:px-6">
+          <div className="flex flex-col items-center space-y-4 text-center">
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold tracking-tighter sm:text-3xl md:text-4xl">
+                Discover Amazing Creators
+              </h1>
+              <p className="mx-auto max-w-[600px] text-muted-foreground">
+                Explore exclusive content from talented creators. Subscribe to unlock full access.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button asChild size="sm">
+                <Link href="/signup">
+                  Get Started <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/explore">Browse All</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
       <h1 className="text-3xl font-bold mb-6">Explore Creators</h1>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

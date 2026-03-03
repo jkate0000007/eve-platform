@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,7 +26,12 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
   const { setLoading } = useGlobalLoading()
   const router = useRouter()
   const supabase = createClient()
+  const PAGE_SIZE = 4
   const [posts, setPosts] = useState<any[]>([])
+  const [postsPage, setPostsPage] = useState(0)
+  const [hasMorePosts, setHasMorePosts] = useState(true)
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
   const [subscribers, setSubscribers] = useState<any[]>([])
   const [subscriptions, setSubscriptions] = useState<any[]>([])
   const [appleGifts, setAppleGifts] = useState<any[]>([])
@@ -46,6 +51,60 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
   const [likedPosts, setLikedPosts] = useState<any[]>([])
   const [loadingLikes, setLoadingLikes] = useState(false)
   const [profileLoadingId, setProfileLoadingId] = useState<string | null>(null)
+  const [subscribedCreatorIds, setSubscribedCreatorIds] = useState<string[]>([])
+
+  const fetchPostsPage = useCallback(
+    async (page: number, append: boolean, creatorIds?: string[]) => {
+      const from = page * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
+
+      if (isCreator) {
+        const { data: postsData } = await supabase
+          .from("posts")
+          .select("*, creator:profiles!creator_id(*)")
+          .eq("creator_id", userId)
+          .not("file_url", "is", null)
+          .order("created_at", { ascending: false })
+          .range(from, to)
+
+        if (append) {
+          setPosts((prev) => [...prev, ...(postsData || [])])
+        } else {
+          setPosts(postsData || [])
+        }
+        setHasMorePosts((postsData?.length ?? 0) === PAGE_SIZE)
+      } else if (creatorIds && creatorIds.length > 0) {
+        const { data: postsData } = await supabase
+          .from("posts")
+          .select("*, creator:profiles!creator_id(*)")
+          .in("creator_id", creatorIds)
+          .not("file_url", "is", null)
+          .order("created_at", { ascending: false })
+          .range(from, to)
+
+        if (append) {
+          setPosts((prev) => [...prev, ...(postsData || [])])
+        } else {
+          setPosts(postsData || [])
+        }
+        setHasMorePosts((postsData?.length ?? 0) === PAGE_SIZE)
+      } else {
+        setHasMorePosts(false)
+      }
+    },
+    [supabase, userId, isCreator]
+  )
+
+  const loadMorePosts = useCallback(async () => {
+    if (loadingMorePosts || !hasMorePosts) return
+    setLoadingMorePosts(true)
+    try {
+      await fetchPostsPage(postsPage, true, isCreator ? undefined : subscribedCreatorIds)
+      setPostsPage((p) => p + 1)
+    } finally {
+      setLoadingMorePosts(false)
+    }
+  }, [loadingMorePosts, hasMorePosts, postsPage, fetchPostsPage, isCreator, subscribedCreatorIds])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,14 +112,8 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
       try {
         // Fetch posts if creator
         if (isCreator) {
-          const { data: postsData } = await supabase
-            .from("posts")
-            .select("*, creator:profiles!creator_id(*)")
-            .eq("creator_id", userId)
-            .not("file_url", "is", null)
-            .order("created_at", { ascending: false })
-
-          setPosts(postsData || [])
+          await fetchPostsPage(0, false)
+          setPostsPage(1)
 
           // Fetch subscribers
           const { data: subsData } = await supabase
@@ -95,17 +148,16 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
 
           setSubscriptions(subsData || [])
 
-          // Fetch posts from subscribed creators
-          if (subsData && subsData.length > 0) {
-            const creatorIds = subsData.map((sub) => sub.creator_id)
-            const { data: postsData } = await supabase
-              .from("posts")
-              .select("*, creator:profiles!creator_id(*)")
-              .in("creator_id", creatorIds)
-              .not("file_url", "is", null)
-              .order("created_at", { ascending: false })
+          const creatorIds = subsData?.map((sub) => sub.creator_id) ?? []
+          setSubscribedCreatorIds(creatorIds)
 
-            setPosts(postsData || [])
+          // Fetch first page of posts from subscribed creators
+          if (creatorIds.length > 0) {
+            await fetchPostsPage(0, false, creatorIds)
+            setPostsPage(1)
+          } else {
+            setPosts([])
+            setHasMorePosts(false)
           }
         }
         // Fetch liked posts for both creators and fans
@@ -130,7 +182,21 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
     }
 
     fetchData()
-  }, [supabase, userId, isCreator])
+  }, [supabase, userId, isCreator, fetchPostsPage])
+
+  // Infinite scroll: load more when sentinel is visible
+  useEffect(() => {
+    const el = loadMoreRef.current
+    if (!el || !hasMorePosts || loadingMorePosts) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMorePosts()
+      },
+      { threshold: 0.1, rootMargin: "100px" }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMorePosts, loadingMorePosts, loadMorePosts])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -194,15 +260,10 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
       setMediaPreviewUrl(null)
       setIsPreview(false)
 
-      // Refresh posts
-      const { data: postsData } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("creator_id", userId)
-        .not("file_url", "is", null)
-        .order("created_at", { ascending: false })
-
-      setPosts(postsData || [])
+      // Refresh posts - refetch first page and reset pagination
+      setPostsPage(0)
+      await fetchPostsPage(0, false)
+      setPostsPage(1)
     } catch (error: any) {
       toast({
         title: "Error",
@@ -408,7 +469,17 @@ export function DashboardTabs({ isCreator, userId }: { isCreator: boolean; userI
               </CardContent>
             </Card>
           ) : (
-            posts.map((post) => <PostCard key={post.id} post={post} isSubscribed={true} currentUserId={userId} />)
+            <>
+              {posts.map((post) => (
+                <PostCard key={post.id} post={post} isSubscribed={true} currentUserId={userId} />
+              ))}
+              <div ref={loadMoreRef} className="min-h-[1px] py-4 flex justify-center">
+                {loadingMorePosts && <Spinner size={24} />}
+                {!hasMorePosts && posts.length > 0 && (
+                  <p className="text-sm text-muted-foreground">No more posts</p>
+                )}
+              </div>
+            </>
           )}
         </div>
       </TabsContent>
